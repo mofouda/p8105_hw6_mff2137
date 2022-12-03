@@ -76,3 +76,28 @@ balt_or
 ```
 
 The odds ratio of for solving homicides comparing male victims to female victims keeping all other variables fixed in Baltimore, MD is 0.43 and the 95% confidence interval is 0.32 and 0.56. 
+
+
+## Regression across all cities
+
+```{r}
+all_cities_model <-
+    homicide %>% 
+    nest(df = -city_state) %>% 
+    mutate(
+        models = map(.x = df, ~glm(case ~ victim_age + victim_sex + victim_race, family = binomial, data = .x)),
+        results = map(models, broom::tidy)) %>% 
+    select(city_state, results) %>% 
+    unnest(results) %>% 
+    filter(term == "victim_sexMale") %>% 
+    mutate(
+        or = exp(estimate),
+        lower95ci = exp(estimate - 1.96*std.error),
+        upper95ci = exp(estimate + 1.96*std.error),
+        city_state = fct_reorder(city_state, or)) %>% 
+    select(city_state, or, lower95ci, upper95ci) 
+
+all_cities_model
+```
+
+
