@@ -1,0 +1,78 @@
+---
+title: "Homework 6"
+author: "Mohammad Fouda"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(viridis)
+
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+```
+
+
+## Problem 2
+
+### Data cleaning and tidying
+
+```{r}
+homicide <-
+  read_csv("data/homicide-data.csv") %>% 
+  mutate(
+      city_state = str_c(city, ", ", state),
+      case = ifelse(disposition == "Closed by arrest", 1, 0),
+      victim_age = as.numeric(victim_age),
+      victim_race = fct_relevel(victim_race, "White", "Black"))%>% 
+    filter(
+        !(city_state %in% c("Dallas, TX", "Phoenix, AZ", "Kansas City, MO", "Tulsa, AL")),
+        victim_race %in% c("White", "Black"))
+```
+
+### Regression for Baltimore, MD
+
+## Plotting missing vs observed values
+
+```{r}
+missing_plot <-
+    homicide %>% 
+    Amelia::missmap()
+```
+
+### Fitting the model 
+
+```{r}
+balt_df <-
+    homicide %>% 
+    filter(city_state == "Baltimore, MD") 
+
+balt_model <-
+    balt_df %>% 
+    glm(case ~ victim_age + victim_sex + victim_race, family = binomial, data = .) %>% 
+    broom::tidy()
+
+balt_or <- 
+    glm(case ~ victim_age + victim_sex + victim_race, family = binomial, data = balt_df) %>% 
+    epiDisplay::logistic.display(simplified = TRUE) %>% 
+    knitr::kable(digits = 2)
+
+balt_or
+```
+
+The odds ratio of for solving homicides comparing male victims to female victims keeping all other variables fixed in Baltimore, MD is 0.43 and the 95% confidence interval is 0.32 and 0.56. 
