@@ -119,4 +119,4 @@ model_plot <-
 model_plot
 ```
 
-The 
+The plot shows that the odds of solving a homicide case of male victims are lower compared to that of a female victim across most US cities with the exception of Fresno, CA, stockton, CA, and Alberqueque, NM. The odds are approximately similar in the cities of Minneapolis, MN, Oklahoma City, OK, Tulsa, OK, Atlanta, GA, and Richmond, VA. 
