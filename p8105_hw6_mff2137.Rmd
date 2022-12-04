@@ -6,6 +6,8 @@ output: github_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(modelr)
+library(mgcv)
 library(viridis)
 
 knitr::opts_chunk$set(
@@ -47,7 +49,7 @@ homicide <-
 
 ### Regression for Baltimore, MD
 
-## Plotting missing vs observed values
+#### Plotting missing vs observed values
 
 ```{r}
 missing_plot <-
@@ -120,3 +122,66 @@ model_plot
 ```
 
 The plot shows that the odds of solving a homicide case of male victims are lower compared to that of a female victim across most US cities with the exception of Fresno, CA, stockton, CA, and Alberqueque, NM. The odds are approximately similar in the cities of Minneapolis, MN, Oklahoma City, OK, Tulsa, OK, Atlanta, GA, and Richmond, VA. 
+
+## Problem 2
+
+### Data cleaning and tidying
+
+```{r}
+birthweight <-
+    read_csv("data/birthweight.csv") %>%
+    mutate(
+        babysex = recode(babysex, "1" = "male", "2" = "female"),
+        babysex = factor(babysex),
+        frace = recode(frace,
+            "1" = "White",
+            "2" = "Black",
+            "3" = "Asian",
+            "4" = "Puerto Rican",
+            "8" = "Other",
+            "9" = "Unknown"),
+        frace = factor(frace, levels = c("White", "Black", "Asian", "Puerto Rican", "Other", "Unknown")),
+        malform = recode(malform,"0" = "absent", "1" = "present"),
+        mrace = recode(mrace,
+            "1" = "White",
+            "2" = "Black",
+            "3" = "Asian",
+            "4" = "Puerto Rican",
+            "8" = "Other"),
+        mrace = factor(mrace, levels = c("White", "Black", "Asian", "Puerto Rican", "Other"))
+    )
+```
+
+### Assessing missing values
+
+```{r}
+apply(birthweight, 2, function(x) sum(is.na(x)))
+
+n_missing <-
+    birthweight %>% 
+    skimr::skim() %>% select(n_missing) 
+n_missing
+
+sum(is.na(birthweight))
+```
+
+Using multiple methods, we conclude there are no missing values in the `birthweight` dataset. 
+
+### Model building
+
+Multiple studies found that gestational weight, somking, mother's age and income, baby's gender, parity, and mother's ethnicity were significant predictors of low birthweight babies (Bailey et al. 2006, Negi et al. 2006, Kelly et al. 2008, Mohammad et al. 2014). Based on this literature review and what is generally known about race and income as significant determinants of health, I will be including the baby's sex, family income, mother's age and rave, parity, number of cigarettes the mother smoked,  and the mother's weight gain during pregnancy in the model. Birth weight `bwt` measured in grams is a continuous variable.  Thus, linear model would ne most appropriate to model it as an outcome in a regression analysis. 
+
+```{r}
+bwt_fit <-
+    lm(bwt ~ babysex + fincome + momage + mrace + parity + smoken + wtgain, data = birthweight) 
+
+bwt_model_plot <-
+    birthweight %>% 
+    add_predictions(bwt_fit) %>% 
+    add_residuals(bwt_fit) %>% 
+    ggplot(aes(x = pred, y = resid)) +
+    geom_point()
+
+bwt_model_plot 
+```
+
