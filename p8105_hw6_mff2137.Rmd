@@ -50,7 +50,7 @@ homicide <-
 
 We use the `glm` function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race as predictors.
 
-#### Plotting missing vs observed values
+##### Plotting missing vs observed values
 
 First, we plot the missing vs. observed values in the `homicide` dataset to visulaize the impact of missing data on the model building. 
 
@@ -60,7 +60,7 @@ missing_plot <-
     Amelia::missmap()
 ```
 
-#### Fitting the model 
+##### Fitting the model 
 
 To fit the model, we filter the `homicide` dataset down to the city of Baltimore, MD. Then, we run logistic regression using `glm`. Then, we extract the or and CI using the `logistic.dsiplay` function from the `epiDisplay` package. The results are presented in a table using the `knitr::kable` function. 
 
@@ -131,11 +131,11 @@ model_plot
 
 The plot shows that the odds of solving a homicide case of male victims are lower compared to that of a female victim across most US cities with the exception of Fresno, CA, Stockton, CA, and Albuquerque, NM. The odds are approximately similar for both male and female victims in the cities of Minneapolis, MN, Oklahoma City, OK, Tulsa, OK, Atlanta, GA, and Richmond, VA. 
 
-## Problem 2
+## Problem 3
 
 ### Data cleaning and tidying
 
-First, we load and clean the data for regression analysis. The variables `babysex`, `frace`, `malform`, `mrace` were converted to factor in our dataset. 
+First, we load and clean the data for regression analysis. The variables `babysex`, `frace`, `malform`, `mrace` were converted to factor type in our dataset. 
 
 ```{r}
 birthweight <-
@@ -164,7 +164,7 @@ birthweight <-
 
 ### Assessing missing values
 
-Here, we check for missing data in our dataset using multiple methods (total missing, and by column).
+Here, we check for missing data in our dataset using multiple methods (total missing and by column).
  
 ```{r}
 apply(birthweight, 2, function(x) sum(is.na(x)))
@@ -200,11 +200,7 @@ bwt_model_plot
 
 ### Comparing models
 
-In this step, we compare our model to two others:
-* One using length at birth and gestational age as predictors (main effects only)
-* One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
-
-We utilize `cross_cv` function for cross-validating different models and `map` and `map2_dbl` from `purr` package to iterate across `test` and `train` data frames. The resulting `rmse` is plotted against our 3 models to visually assess model fit and performance. 
+In this step, we compare our model to two others: one using length at birth and gestational age as predictors (main effects only), and a second using head circumference, length, sex, and all interactions (including the three-way interaction) between these. We utilize `cross_cv` function for cross-validating different models and `map` and `map2_dbl` from `purr` package to iterate across `test` and `train` data frames. The resulting `rmse` is plotted against our 3 models to visually assess model fit and performance. 
 
 ```{r}
 model1 <- lm(bwt ~ babysex + fincome + momage + mrace + parity + smoken + wtgain, data = birthweight) 
