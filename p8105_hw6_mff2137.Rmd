@@ -7,7 +7,6 @@ output: github_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(modelr)
-library(mgcv)
 library(viridis)
 
 knitr::opts_chunk$set(
@@ -49,7 +48,11 @@ homicide <-
 
 ### Regression for Baltimore, MD
 
+We use the `glm` function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race as predictors.
+
 #### Plotting missing vs observed values
+
+First, we plot the missing vs. observed values in the `homicide` dataset to visulaize the impact of missing data on the model building. 
 
 ```{r}
 missing_plot <-
@@ -57,7 +60,9 @@ missing_plot <-
     Amelia::missmap()
 ```
 
-### Fitting the model 
+#### Fitting the model 
+
+To fit the model, we filter the `homicide` dataset down to the city of Baltimore, MD. Then, we run logistic regression using `glm`. Then, we extract the or and CI using the `logistic.dsiplay` function from the `epiDisplay` package. The results are presented in a table using the `knitr::kable` function. 
 
 ```{r}
 balt_df <-
@@ -77,10 +82,11 @@ balt_or <-
 balt_or
 ```
 
-The odds ratio of for solving homicides comparing male victims to female victims keeping all other variables fixed in Baltimore, MD is 0.43 and the 95% confidence interval is 0.32 and 0.56. 
+The odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed in Baltimore, MD is 0.43, and the 95% confidence interval is 0.32 and 0.56. 
 
+### Regression across all cities
 
-## Regression across all cities
+Next, we run `glm` for each of the cities in our dataset, and extract the adjusted odds ratio and CI for solving homicides comparing male victims to female victims. We utilize the functions `nest`, `broom::tidy`, and `unnest` as necessary to ensure a tidy process and results. The OR and CI was calculated by hand in this step.
 
 ```{r}
 all_cities_model <-
@@ -104,6 +110,8 @@ all_cities_model
 
 ### Plotting ORs and CI
 
+This step creates a plot that shows the estimated ORs and CIs for each city.
+
 ```{r}
 model_plot <-
     all_cities_model %>% 
@@ -121,11 +129,13 @@ model_plot <-
 model_plot
 ```
 
-The plot shows that the odds of solving a homicide case of male victims are lower compared to that of a female victim across most US cities with the exception of Fresno, CA, stockton, CA, and Alberqueque, NM. The odds are approximately similar in the cities of Minneapolis, MN, Oklahoma City, OK, Tulsa, OK, Atlanta, GA, and Richmond, VA. 
+The plot shows that the odds of solving a homicide case of male victims are lower compared to that of a female victim across most US cities with the exception of Fresno, CA, Stockton, CA, and Albuquerque, NM. The odds are approximately similar for both male and female victims in the cities of Minneapolis, MN, Oklahoma City, OK, Tulsa, OK, Atlanta, GA, and Richmond, VA. 
 
 ## Problem 2
 
 ### Data cleaning and tidying
+
+First, we load and clean the data for regression analysis. The variables `babysex`, `frace`, `malform`, `mrace` were converted to factor in our dataset. 
 
 ```{r}
 birthweight <-
@@ -154,6 +164,8 @@ birthweight <-
 
 ### Assessing missing values
 
+Here, we check for missing data in our dataset using multiple methods (total missing, and by column).
+ 
 ```{r}
 apply(birthweight, 2, function(x) sum(is.na(x)))
 
@@ -165,11 +177,11 @@ n_missing
 sum(is.na(birthweight))
 ```
 
-Using multiple methods, we conclude there are no missing values in the `birthweight` dataset. 
+We conclude that there are no missing values in the `birthweight` dataset. 
 
 ### Model building
 
-Multiple studies found that gestational weight, somking, mother's age and income, baby's gender, parity, and mother's ethnicity were significant predictors of low birthweight babies (Bailey et al. 2006, Negi et al. 2006, Kelly et al. 2008, Mohammad et al. 2014). Based on this literature review and what is generally known about race and income as significant determinants of health, I will be including the baby's sex, family income, mother's age and rave, parity, number of cigarettes the mother smoked,  and the mother's weight gain during pregnancy in the model. Birth weight `bwt` measured in grams is a continuous variable.  Thus, linear model would ne most appropriate to model it as an outcome in a regression analysis. 
+Multiple studies found that gestational weight, smoking, mother's age, family income, baby's gender, parity, and mother's ethnicity were significant predictors of low birth weight babies (Bailey et al. 2006, Negi et al. 2006, Kelly et al. 2008, Mohammad et al. 2014). Based on this brief literature review and what is generally known about race and income as significant determinants of health, I will be including the baby's sex, family income, mother's age and race, parity, number of cigarettes the mother smoked during pregnancy, and the mother's weight gain during pregnancy in the model. Birth weight `bwt` measured in grams is a continuous variable. Thus, linear model would be most appropriate for this regression analysis. 
 
 ```{r}
 bwt_fit <-
@@ -179,9 +191,52 @@ bwt_model_plot <-
     birthweight %>% 
     add_predictions(bwt_fit) %>% 
     add_residuals(bwt_fit) %>% 
-    ggplot(aes(x = pred, y = resid)) +
-    geom_point()
+    ggplot(aes(x = bwt, y = resid)) +
+    geom_point() +
+    geom_point(aes(y = pred), color = "red")
 
 bwt_model_plot 
+```
+
+### Comparing models
+
+In this step, we compare our model to two others:
+* One using length at birth and gestational age as predictors (main effects only)
+* One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
+
+We utilize `cross_cv` function for cross-validating different models and `map` and `map2_dbl` from `purr` package to iterate across `test` and `train` data frames. The resulting `rmse` is plotted against our 3 models to visually assess model fit and performance. 
+
+```{r}
+model1 <- lm(bwt ~ babysex + fincome + momage + mrace + parity + smoken + wtgain, data = birthweight) 
+model2 <- lm(bwt ~ blength + gaweeks, data = birthweight)
+model3 <- lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = birthweight)
+
+cv_df <-
+    crossv_mc(birthweight, 100) %>% 
+    mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble),
+  ) %>% 
+    mutate(
+        model1 = map(.x = train, ~lm(bwt ~ babysex + fincome + momage + mrace + parity + smoken + wtgain, data = .x)),
+        model2 = map(.x = train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+        model3 = map(.x = train, ~lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + 
+                                         blength*babysex + bhead*blength*babysex, data = .x))) %>% 
+    mutate(
+           rmse_model1 = map2_dbl(.x = model1, .y = test, ~rmse(model = .x, data = .y)),
+           rmse_model2 =    map2_dbl(.x = model2,    .y = test, ~rmse(model = .x, data = .y)),
+           rmse_model3 = map2_dbl(.x = model3, .y = test, ~rmse(model = .x, data = .y)) 
+    )
+
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    values_to = "rmse",
+    names_prefix = "rmse_"
+  ) %>% 
+  ggplot(aes(x = model, y = rmse)) +
+  geom_boxplot()
 ```
 
